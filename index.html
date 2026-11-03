@@ -79,58 +79,51 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
    Gradients cannot be transitioned, so there are two layers and the new one
    is cross-faded in over the old. */
 .ambient{
-  position:fixed;inset:-12%;
+  /* A band of light along the bottom edge only; the top of the screen stays
+     clean so the rise and fall has something to read against. */
+  position:fixed;left:-10%;right:-10%;bottom:-12%;top:auto;
+  height:64%;
   z-index:0;pointer-events:none;
   opacity:0;transition:opacity 1.4s ease;
   will-change:opacity;
+  -webkit-mask-image:linear-gradient(to top,
+    rgba(0,0,0,1) 0%, rgba(0,0,0,.92) 34%, rgba(0,0,0,.45) 68%, rgba(0,0,0,0) 100%);
+  mask-image:linear-gradient(to top,
+    rgba(0,0,0,1) 0%, rgba(0,0,0,.92) 34%, rgba(0,0,0,.45) 68%, rgba(0,0,0,0) 100%);
 }
-/* Each pool of light wanders on its own long, uneven cycle, so the room never
-   settles into a pattern. Soft-edged gradients rather than blurred shapes:
-   same look, far cheaper on a phone. */
+.ambient.on{opacity:1}
+/* Three crests travelling at different speeds. Where they overlap they build,
+   where they separate they fall away — which is what makes it read as waves
+   rather than as blobs sliding about. */
 .pool{
-  position:absolute;border-radius:50%;
+  position:absolute;bottom:-28%;
+  border-radius:50%;
   will-change:transform;
 }
-.pool.p1{
-  width:76%;height:104%;left:-8%;top:-14%;
-  animation:drift1 9s ease-in-out infinite alternate;
+.pool.p1{ width:78%;height:120%;left:-8%;
+  animation:wave1 9s ease-in-out infinite alternate; }
+.pool.p2{ width:70%;height:108%;right:-6%;
+  animation:wave2 13s ease-in-out infinite alternate; }
+.pool.p3{ width:56%;height:96%;left:28%;
+  animation:wave3 7s ease-in-out infinite alternate; }
+
+@keyframes wave1{
+  0%  {transform:translate(-10%,6%)  scaleX(1)    scaleY(.88)}
+  50% {transform:translate(16%,-8%)  scaleX(1.22) scaleY(1.12)}
+  100%{transform:translate(4%,3%)    scaleX(1.06) scaleY(.96)}
 }
-.pool.p2{
-  width:70%;height:96%;right:-6%;bottom:-16%;
-  animation:drift2 13s ease-in-out infinite alternate;
+@keyframes wave2{
+  0%  {transform:translate(12%,4%)   scaleX(1.1)  scaleY(1.04)}
+  50% {transform:translate(-18%,-9%) scaleX(.94)  scaleY(.9)}
+  100%{transform:translate(-4%,7%)   scaleX(1.18) scaleY(1.14)}
 }
-@keyframes drift1{
-  0%  {transform:translate(-10%,-8%) scale(.96)}
-  35% {transform:translate(22%,16%)  scale(1.22)}
-  70% {transform:translate(8%,-14%)  scale(1.04)}
-  100%{transform:translate(28%,7%)   scale(1.16)}
-}
-@keyframes drift2{
-  0%  {transform:translate(10%,10%)   scale(1.12)}
-  40% {transform:translate(-22%,-12%) scale(.97)}
-  75% {transform:translate(-6%,16%)   scale(1.24)}
-  100%{transform:translate(-26%,4%)   scale(1.02)}
+@keyframes wave3{
+  0%  {transform:translate(-6%,10%)  scaleX(.9)   scaleY(.82)}
+  50% {transform:translate(10%,-12%) scaleX(1.3)  scaleY(1.2)}
+  100%{transform:translate(-12%,5%)  scaleX(1.02) scaleY(.94)}
 }
 @media (prefers-reduced-motion:reduce){
   .pool{animation:none}
-}
-.ambient.on{opacity:1}
-/* The lighting breathes while the record turns and settles when it stops.
-   Two rates, so it swells rather than blinking on a metronome. The phone
-   cannot hear the audio, so this is tied to playback, not to the beat. */
-.playing-light .ambient.on{
-  animation:breathe 3.2s ease-in-out infinite, shimmer 2.1s ease-in-out infinite;
-}
-@keyframes breathe{
-  0%,100%{opacity:.46}
-  50%    {opacity:1}
-}
-@keyframes shimmer{
-  0%,100%{filter:brightness(.86)}
-  50%    {filter:brightness(1.16)}
-}
-@media (prefers-reduced-motion:reduce){
-  .playing-light .ambient.on{animation:none}
 }
 .stage,.bar,.progress{position:relative;z-index:1}
 .stage{
@@ -449,8 +442,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 <body>
 
 <div id="app" hidden>
-  <div class="ambient" id="ambientA"><i class="pool p1"></i><i class="pool p2"></i></div>
-  <div class="ambient" id="ambientB"><i class="pool p1"></i><i class="pool p2"></i></div>
+  <div class="ambient" id="ambientA"><i class="pool p1"></i><i class="pool p2"></i><i class="pool p3"></i></div>
+  <div class="ambient" id="ambientB"><i class="pool p1"></i><i class="pool p2"></i><i class="pool p3"></i></div>
   <div class="wallclock">
     <div><span class="hm" id="clockHM">00:00</span><span class="ss" id="clockSS">00</span></div>
     <div class="date" id="clockDate"></div>
@@ -854,10 +847,14 @@ function applyAmbient(colours){
   const alpha = dark ? 0.88 : 0.58;
   const next = ambientFront === el.ambientA ? el.ambientB : el.ambientA;
   const pools = next.querySelectorAll('.pool');
+  // the third crest is the two colours met in the middle
+  const mid = { r: (a.r + b.r) >> 1, g: (a.g + b.g) >> 1, b: (a.b + b.b) >> 1 };
   pools[0].style.background =
     `radial-gradient(closest-side, rgba(${a.r},${a.g},${a.b},${alpha}), rgba(0,0,0,0) 72%)`;
   pools[1].style.background =
     `radial-gradient(closest-side, rgba(${b.r},${b.g},${b.b},${alpha * 0.85}), rgba(0,0,0,0) 74%)`;
+  pools[2].style.background =
+    `radial-gradient(closest-side, rgba(${mid.r},${mid.g},${mid.b},${alpha * 0.7}), rgba(0,0,0,0) 76%)`;
   next.classList.add('on');
   if (ambientFront) ambientFront.classList.remove('on');
   ambientFront = next;
