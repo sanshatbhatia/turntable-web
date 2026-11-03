@@ -93,23 +93,23 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 }
 .pool.p1{
   width:76%;height:104%;left:-8%;top:-14%;
-  animation:drift1 37s ease-in-out infinite alternate;
+  animation:drift1 19s ease-in-out infinite alternate;
 }
 .pool.p2{
   width:70%;height:96%;right:-6%;bottom:-16%;
-  animation:drift2 53s ease-in-out infinite alternate;
+  animation:drift2 27s ease-in-out infinite alternate;
 }
 @keyframes drift1{
-  0%  {transform:translate(-4%,-3%) scale(1)}
-  35% {transform:translate(16%,12%)  scale(1.18)}
-  70% {transform:translate(6%,-9%)   scale(1.06)}
-  100%{transform:translate(20%,4%)   scale(1.12)}
+  0%  {transform:translate(-10%,-8%) scale(.96)}
+  35% {transform:translate(22%,16%)  scale(1.22)}
+  70% {transform:translate(8%,-14%)  scale(1.04)}
+  100%{transform:translate(28%,7%)   scale(1.16)}
 }
 @keyframes drift2{
-  0%  {transform:translate(4%,6%)    scale(1.08)}
-  40% {transform:translate(-14%,-8%) scale(1)}
-  75% {transform:translate(-4%,10%)  scale(1.2)}
-  100%{transform:translate(-18%,2%)  scale(1.04)}
+  0%  {transform:translate(10%,10%)   scale(1.12)}
+  40% {transform:translate(-22%,-12%) scale(.97)}
+  75% {transform:translate(-6%,16%)   scale(1.24)}
+  100%{transform:translate(-26%,4%)   scale(1.02)}
 }
 @media (prefers-reduced-motion:reduce){
   .pool{animation:none}
