@@ -84,6 +84,36 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   opacity:0;transition:opacity 1.4s ease;
   will-change:opacity;
 }
+/* Each pool of light wanders on its own long, uneven cycle, so the room never
+   settles into a pattern. Soft-edged gradients rather than blurred shapes:
+   same look, far cheaper on a phone. */
+.pool{
+  position:absolute;border-radius:50%;
+  will-change:transform;
+}
+.pool.p1{
+  width:76%;height:104%;left:-8%;top:-14%;
+  animation:drift1 37s ease-in-out infinite alternate;
+}
+.pool.p2{
+  width:70%;height:96%;right:-6%;bottom:-16%;
+  animation:drift2 53s ease-in-out infinite alternate;
+}
+@keyframes drift1{
+  0%  {transform:translate(-4%,-3%) scale(1)}
+  35% {transform:translate(16%,12%)  scale(1.18)}
+  70% {transform:translate(6%,-9%)   scale(1.06)}
+  100%{transform:translate(20%,4%)   scale(1.12)}
+}
+@keyframes drift2{
+  0%  {transform:translate(4%,6%)    scale(1.08)}
+  40% {transform:translate(-14%,-8%) scale(1)}
+  75% {transform:translate(-4%,10%)  scale(1.2)}
+  100%{transform:translate(-18%,2%)  scale(1.04)}
+}
+@media (prefers-reduced-motion:reduce){
+  .pool{animation:none}
+}
 .ambient.on{opacity:1}
 /* The lighting breathes while the record turns and settles when it stops.
    Two rates, so it swells rather than blinking on a metronome. The phone
@@ -92,8 +122,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   animation:breathe 5.2s ease-in-out infinite, shimmer 2.3s ease-in-out infinite;
 }
 @keyframes breathe{
-  0%,100%{opacity:.68;transform:scale(1)}
-  50%    {opacity:1;transform:scale(1.035)}
+  0%,100%{opacity:.72}
+  50%    {opacity:1}
 }
 @keyframes shimmer{
   0%,100%{filter:brightness(.94)}
@@ -419,8 +449,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 <body>
 
 <div id="app" hidden>
-  <div class="ambient" id="ambientA"></div>
-  <div class="ambient" id="ambientB"></div>
+  <div class="ambient" id="ambientA"><i class="pool p1"></i><i class="pool p2"></i></div>
+  <div class="ambient" id="ambientB"><i class="pool p1"></i><i class="pool p2"></i></div>
   <div class="wallclock">
     <div><span class="hm" id="clockHM">00:00</span><span class="ss" id="clockSS">00</span></div>
     <div class="date" id="clockDate"></div>
@@ -823,9 +853,11 @@ function applyAmbient(colours){
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   const alpha = dark ? 0.55 : 0.34;
   const next = ambientFront === el.ambientA ? el.ambientB : el.ambientA;
-  next.style.background =
-    `radial-gradient(58% 70% at 24% 30%, rgba(${a.r},${a.g},${a.b},${alpha}), rgba(0,0,0,0) 70%),` +
-    `radial-gradient(54% 64% at 79% 71%, rgba(${b.r},${b.g},${b.b},${alpha * 0.85}), rgba(0,0,0,0) 72%)`;
+  const pools = next.querySelectorAll('.pool');
+  pools[0].style.background =
+    `radial-gradient(closest-side, rgba(${a.r},${a.g},${a.b},${alpha}), rgba(0,0,0,0) 72%)`;
+  pools[1].style.background =
+    `radial-gradient(closest-side, rgba(${b.r},${b.g},${b.b},${alpha * 0.85}), rgba(0,0,0,0) 74%)`;
   next.classList.add('on');
   if (ambientFront) ambientFront.classList.remove('on');
   ambientFront = next;
