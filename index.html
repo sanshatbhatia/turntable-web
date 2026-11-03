@@ -315,6 +315,27 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   box-shadow:0 2px 8px -4px var(--shadow);
 }
 
+/* ---------- stars ---------- */
+.stars{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  display:none;                      /* on paper these read as dirt, not stars */
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .stars{display:block}
+}
+.star{
+  position:absolute;border-radius:50%;background:#fff;
+  animation:twinkle var(--dur) ease-in-out infinite alternate;
+  animation-delay:var(--delay);
+}
+@keyframes twinkle{
+  from{opacity:.10}
+  to  {opacity:var(--hi)}
+}
+@media (prefers-reduced-motion:reduce){
+  .star{animation:none;opacity:.3}
+}
+
 /* ---------- queue ---------- */
 .queue{
   flex:0 0 auto;
@@ -533,6 +554,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 <body>
 
 <div id="app" hidden>
+  <div class="stars" id="stars"></div>
   <div class="ambient" id="ambientA"><i class="pool p1"></i><i class="pool p2"></i><i class="pool p3"></i></div>
   <div class="ambient" id="ambientB"><i class="pool p1"></i><i class="pool p2"></i><i class="pool p3"></i></div>
   <div class="wallclock">
@@ -966,6 +988,28 @@ function applyAmbient(colours){
   ambientFront = next;
 }
 
+/* ---------------- stars ----------------
+   Built once. Each star gets its own rate and delay, so none of them blink
+   together, which is what separates a sky from a string of fairy lights. */
+function buildStars(n = 90){
+  const sky = $('stars');
+  if (sky.childElementCount) return;
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < n; i++){
+    const star = document.createElement('i');
+    star.className = 'star';
+    const r = 0.6 + Math.random() * 1.5;
+    star.style.width = star.style.height = r.toFixed(2) + 'px';
+    star.style.left = (Math.random() * 100).toFixed(2) + '%';
+    star.style.top = (Math.random() * 78).toFixed(2) + '%';   // clear of the light at the foot
+    star.style.setProperty('--dur', (2.2 + Math.random() * 4.0).toFixed(2) + 's');
+    star.style.setProperty('--delay', (-Math.random() * 6).toFixed(2) + 's');
+    star.style.setProperty('--hi', (0.35 + Math.random() * 0.45).toFixed(2));
+    frag.appendChild(star);
+  }
+  sky.appendChild(frag);
+}
+
 /* ---------------- queue ----------------
    Spotify's own queue endpoint, which returns what is coming next in order.
    Polled far less often than playback state: it changes rarely and the
@@ -1150,6 +1194,7 @@ async function boot(){
   if (Date.now() > expires && !(await renew())){ show('setup'); return; }
 
   show('app');
+  buildStars();
   startWallClock();
   requestAnimationFrame(tick);
   poll();
