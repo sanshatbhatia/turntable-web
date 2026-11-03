@@ -85,6 +85,23 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   will-change:opacity;
 }
 .ambient.on{opacity:1}
+/* The lighting breathes while the record turns and settles when it stops.
+   Two rates, so it swells rather than blinking on a metronome. The phone
+   cannot hear the audio, so this is tied to playback, not to the beat. */
+.playing-light .ambient.on{
+  animation:breathe 5.2s ease-in-out infinite, shimmer 2.3s ease-in-out infinite;
+}
+@keyframes breathe{
+  0%,100%{opacity:.68;transform:scale(1)}
+  50%    {opacity:1;transform:scale(1.035)}
+}
+@keyframes shimmer{
+  0%,100%{filter:brightness(.94)}
+  50%    {filter:brightness(1.07)}
+}
+@media (prefers-reduced-motion:reduce){
+  .playing-light .ambient.on{animation:none}
+}
 .stage,.bar,.progress{position:relative;z-index:1}
 .stage{
   flex:1;min-height:0;position:relative;
@@ -640,6 +657,7 @@ const mmss = ms => {
 function paint(item, isPlaying){
   playing = !!isPlaying;
   el.record.classList.toggle('playing', playing);
+  $('app').classList.toggle('playing-light', playing);
   setArm(playing, duration ? progress / duration : 0);
   el.icoPlay.classList.toggle('hide', playing);
   el.icoPause.classList.toggle('hide', !playing);
@@ -865,6 +883,7 @@ $('toggle').onclick = async () => {
   // Move the record straight away; the next poll confirms it.
   playing = !wasPlaying;
   el.record.classList.toggle('playing', playing);
+  $('app').classList.toggle('playing-light', playing);
   setArm(playing, duration ? progress / duration : 0);
   el.icoPlay.classList.toggle('hide', playing);
   el.icoPause.classList.toggle('hide', !playing);
