@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#EDEAE3">
+<title>Turntable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;600&display=swap">
+<style>
+/* Layout: one landscape stage — sleeve left, record overlapping it, tonearm right, transport along the bottom. */
+:root{
+  --paper:#EDEAE3;          /* warm stock, the ground everything sits on */
+  --ink:#1A1917;            /* label black + primary type */
+  --ink-soft:#6E6A61;       /* secondary type */
+  --hairline:rgba(26,25,23,.14);
+  --vinyl:rgba(104,103,98,.72);   /* translucent smoke — the sleeve reads through it */
+  --shadow:rgba(26,25,23,.22);
+  --font-ui:'Archivo','Helvetica Neue',Helvetica,Arial,sans-serif;
+  --font-narrow:'Archivo Narrow','Archivo Narrow Fallback',var(--font-ui);
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+/* .veil and #app are flex, which would otherwise beat the hidden attribute */
+[hidden]{display:none!important}
+body{
+  background:var(--paper);color:var(--ink);
+  font-family:var(--font-ui);
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+  touch-action:manipulation;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:max(10px,env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-bottom,0px));
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--ink);outline-offset:3px;border-radius:2px}
+
+/* ---------- stage ---------- */
+#app{height:100%;display:flex;flex-direction:column}
+.stage{
+  flex:1;min-height:0;position:relative;
+  display:flex;align-items:center;justify-content:center;
+  gap:0;
+}
+.deck{
+  position:relative;
+  height:min(84%,78vw);
+  aspect-ratio:1.95/1;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ---------- sleeve ---------- */
+.sleeve{
+  position:absolute;left:0;top:50%;
+  height:92%;aspect-ratio:1/1;
+  transform:translateY(-50%) rotate(-1.4deg);
+  background:#d9d6cf;
+  box-shadow:0 18px 40px -18px var(--shadow), 0 2px 6px -2px var(--shadow);
+  overflow:hidden;
+}
+.sleeve img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .6s ease}
+.sleeve img.on{opacity:1}
+.sleeve::after{ /* the slight sheen a printed card stock has */
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(118deg,rgba(255,255,255,.22),rgba(255,255,255,0) 42%);
+  pointer-events:none;
+}
+.sleeve .blank{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-family:var(--font-narrow);font-size:.74rem;letter-spacing:.22em;
+  text-transform:uppercase;color:#8c887f;
+}
+
+/* ---------- record ---------- */
+.record-wrap{
+  position:absolute;right:11%;top:50%;
+  height:100%;aspect-ratio:1/1;
+  transform:translateY(-50%);
+  filter:drop-shadow(0 16px 30px rgba(26,25,23,.18));
+}
+.record{
+  width:100%;height:100%;border-radius:50%;
+  position:relative;
+  background:
+    repeating-radial-gradient(circle at 50% 50%,
+      rgba(255,255,255,.07) 0 1px, rgba(0,0,0,.07) 1px 2px, rgba(0,0,0,0) 2px 3.4px),
+    radial-gradient(circle at 36% 30%, rgba(255,255,255,.34), rgba(255,255,255,0) 52%),
+    radial-gradient(circle at 50% 50%,
+      var(--vinyl) 0 27.5%,
+      rgba(96,95,90,.78) 27.5% 70%,
+      rgba(118,117,112,.74) 70% 86%,
+      rgba(96,95,90,.78) 86% 99.4%,
+      rgba(0,0,0,0) 99.4%);
+  animation:spin 2.6s linear infinite;
+  animation-play-state:paused;
+  will-change:transform;
+}
+.record.playing{animation-play-state:running}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.label{
+  position:absolute;left:50%;top:50%;
+  width:42%;height:42%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  background:var(--ink);
+  color:var(--paper);
+  display:grid;place-items:center;
+  overflow:hidden;
+}
+.label .arcs{position:absolute;inset:0;width:100%;height:100%}
+.label .arcs text{
+  font-family:var(--font-narrow);
+  font-size:8.4px;letter-spacing:.12em;
+  fill:rgba(237,234,227,.62);
+  text-transform:uppercase;
+}
+/* the two vertical lines flanking the spindle, as on the reference */
+.label .vtext{
+  position:absolute;top:50%;
+  max-width:62%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:clamp(9px,1.35vh,15px);
+}
+.label .v-title{
+  left:26%;transform:translate(-50%,-50%) rotate(-90deg);
+  font-weight:700;letter-spacing:-.01em;
+}
+.label .v-artist{
+  left:74%;transform:translate(-50%,-50%) rotate(90deg);
+  font-weight:400;color:rgba(237,234,227,.86);
+}
+.spindle{
+  position:absolute;left:50%;top:50%;
+  width:5.5%;height:5.5%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  background:var(--paper);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);
+}
+
+/* ---------- tonearm ---------- */
+.tonearm{
+  position:absolute;right:-2%;top:6%;
+  height:74%;width:9%;
+  pointer-events:none;
+}
+.pivot{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:86%;aspect-ratio:1/1;border-radius:50%;
+  background:#fbfaf7;
+  box-shadow:0 2px 10px -4px var(--shadow), inset 0 0 0 1px rgba(26,25,23,.08);
+}
+.pivot::after{
+  content:"";position:absolute;left:18%;top:28%;
+  width:64%;height:34%;border-radius:3px;
+  background:#f1efe9;box-shadow:inset 0 0 0 1px rgba(26,25,23,.1);
+}
+.arm{
+  position:absolute;top:30%;left:50%;
+  width:13%;height:62%;
+  transform-origin:50% 0;
+  transform:translateX(-50%) rotate(7deg);
+  background:linear-gradient(90deg,#e9e7e1,#fdfcfa 45%,#dedbd4);
+  border-radius:6px;
+  transition:transform .9s cubic-bezier(.4,0,.2,1);
+}
+.record.playing ~ .tonearm .arm,
+.tonearm.on .arm{transform:translateX(-50%) rotate(-3deg)}
+.head{
+  position:absolute;bottom:-14%;left:50%;
+  width:210%;height:17%;
+  transform:translateX(-52%) rotate(-10deg);
+  background:#fbfaf7;border-radius:4px;
+  box-shadow:0 2px 8px -4px var(--shadow), inset 0 0 0 1px rgba(26,25,23,.08);
+}
+
+/* ---------- transport ---------- */
+.bar{
+  flex:0 0 auto;
+  display:flex;align-items:flex-end;gap:16px;
+  padding-top:10px;
+}
+.meta{flex:1;min-width:0}
+.track{
+  font-size:clamp(14px,2.4vh,21px);font-weight:600;letter-spacing:-.012em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.artist{
+  font-family:var(--font-narrow);
+  font-size:clamp(11px,1.7vh,14px);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-soft);margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.controls{display:flex;align-items:center;gap:6px}
+.ctl{
+  width:clamp(36px,6.4vh,46px);height:clamp(36px,6.4vh,46px);
+  display:grid;place-items:center;border-radius:50%;
+  transition:background .18s ease, transform .18s ease;
+}
+.ctl:hover{background:rgba(26,25,23,.06)}
+.ctl:active{transform:scale(.92)}
+.ctl svg{width:46%;height:46%;fill:var(--ink)}
+.ctl.main{background:var(--ink)}
+.ctl.main svg{fill:var(--paper);width:40%;height:40%}
+.ctl.main:hover{background:#000}
+.clock{
+  font-variant-numeric:tabular-nums;
+  font-family:var(--font-narrow);font-size:clamp(10px,1.5vh,13px);
+  letter-spacing:.08em;color:var(--ink-soft);
+  min-width:5.8em;text-align:right;
+}
+.progress{
+  flex:0 0 auto;height:2px;background:var(--hairline);
+  margin-top:10px;position:relative;overflow:hidden;
+}
+.progress i{
+  position:absolute;inset:0 auto 0 0;width:0%;
+  background:var(--ink); /* driven per frame, so no transition */
+}
+
+/* ---------- overlays ---------- */
+.veil{
+  position:fixed;inset:0;z-index:20;
+  background:var(--paper);
+  display:flex;align-items:center;justify-content:center;
+  padding:max(24px,env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));
+  overflow-y:auto;
+}
+.panel{width:100%;max-width:520px}
+.kicker{
+  font-family:var(--font-narrow);font-size:12px;letter-spacing:.3em;
+  text-transform:uppercase;color:var(--ink-soft);
+}
+.panel h1{font-size:clamp(22px,4.4vw,30px);font-weight:700;letter-spacing:-.02em;margin:.4rem 0 .7rem;text-wrap:balance}
+.panel p{font-size:14px;line-height:1.6;color:var(--ink-soft);margin:0 0 .9rem}
+.panel ol{margin:0 0 1.1rem;padding-left:1.15rem;font-size:14px;line-height:1.75;color:var(--ink-soft)}
+.panel li{margin-bottom:.3rem}
+.panel code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+  background:rgba(26,25,23,.06);padding:.15em .4em;border-radius:3px;
+  word-break:break-all;color:var(--ink);
+}
+.field{display:flex;gap:8px;margin-bottom:.8rem;flex-wrap:wrap}
+.field input{
+  flex:1;min-width:200px;font:inherit;font-size:15px;
+  padding:11px 13px;border:1px solid var(--hairline);border-radius:4px;
+  background:#fff;color:var(--ink);
+}
+.btn{
+  padding:11px 20px;border-radius:4px;background:var(--ink);color:var(--paper);
+  font-size:14px;font-weight:600;letter-spacing:.01em;
+}
+.btn.ghost{background:none;color:var(--ink);box-shadow:inset 0 0 0 1px var(--hairline)}
+.note{font-size:12.5px;line-height:1.6;color:var(--ink-soft);margin-top:1rem}
+.err{color:#9a3412;font-size:13px;margin-top:.6rem;min-height:1.1em}
+
+#rotate{display:none;z-index:30;text-align:center}
+#rotate .panel{max-width:300px}
+@media (orientation:portrait) and (max-width:900px){
+  #rotate{display:flex}
+}
+.phone-icon{width:34px;height:52px;border:2px solid var(--ink);border-radius:5px;margin:0 auto 18px;animation:tip 2.4s ease-in-out infinite}
+@keyframes tip{0%,55%{transform:rotate(0)}75%,100%{transform:rotate(-90deg)}}
+
+.toast{
+  position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%) translateY(140%);
+  background:var(--ink);color:var(--paper);
+  font-size:13px;padding:10px 16px;border-radius:4px;
+  transition:transform .3s cubic-bezier(.4,0,.2,1);z-index:40;
+  max-width:min(90vw,440px);text-align:center;
+}
+.toast.on{transform:translateX(-50%) translateY(0)}
+
+.gear{
+  position:fixed;top:max(8px,env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));
+  width:34px;height:34px;display:grid;place-items:center;border-radius:50%;
+  opacity:.28;transition:opacity .2s ease;z-index:15;
+}
+.gear:hover{opacity:.8}
+.gear svg{width:16px;height:16px;fill:var(--ink)}
+
+@media (prefers-reduced-motion:reduce){
+  .record{animation-duration:14s}
+  .phone-icon{animation:none}
+  .arm{transition:none}
+}
+</style>
+</head>
+<body>
+
+<div id="app" hidden>
+  <div class="stage">
+    <div class="deck">
+      <div class="sleeve">
+        <div class="blank">no sleeve</div>
+        <img id="art" alt="">
+      </div>
+      <div class="record-wrap">
+        <div class="record" id="record">
+          <div class="label">
+            <svg class="arcs" viewBox="0 0 200 200" aria-hidden="true">
+              <defs>
+                <path id="arcTop" d="M32,100 A68,68 0 0 1 168,100" fill="none"></path>
+                <path id="arcBot" d="M36,100 A64,64 0 0 0 164,100" fill="none"></path>
+              </defs>
+              <text><textPath id="arcTopT" href="#arcTop" startOffset="50%" text-anchor="middle"></textPath></text>
+              <text><textPath id="arcBotT" href="#arcBot" startOffset="50%" text-anchor="middle">33⅓ rpm · stereo</textPath></text>
+            </svg>
+            <span class="vtext v-title" id="vTitle"></span>
+            <span class="vtext v-artist" id="vArtist"></span>
+          </div>
+          <div class="spindle"></div>
+        </div>
+        <div class="tonearm" id="tonearm">
+          <div class="pivot"></div>
+          <div class="arm"><div class="head"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bar">
+    <div class="meta">
+      <div class="track" id="track">Nothing playing</div>
+      <div class="artist" id="artist">Start something on Spotify</div>
+    </div>
+    <div class="controls">
+      <button class="ctl" id="prev" aria-label="Previous track">
+        <svg viewBox="0 0 24 24"><path d="M6 5h2.5v14H6zM20 5v14L9.5 12z"/></svg>
+      </button>
+      <button class="ctl main" id="toggle" aria-label="Play or pause">
+        <svg id="icoPlay" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg>
+        <svg id="icoPause" viewBox="0 0 24 24" hidden><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>
+      </button>
+      <button class="ctl" id="next" aria-label="Next track">
+        <svg viewBox="0 0 24 24"><path d="M15.5 5H18v14h-2.5zM4 5v14l10.5-7z"/></svg>
+      </button>
+    </div>
+    <div class="clock" id="clock">0:00 / 0:00</div>
+  </div>
+  <div class="progress"><i id="bar"></i></div>
+
+  <button class="gear" id="gear" aria-label="Settings">
+    <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9.4 4a7.5 7.5 0 01-.1 1.2l2 1.6-2 3.4-2.4-1a7.6 7.6 0 01-2 1.2l-.4 2.6h-4l-.4-2.6a7.6 7.6 0 01-2-1.2l-2.4 1-2-3.4 2-1.6a7.5 7.5 0 010-2.4l-2-1.6 2-3.4 2.4 1a7.6 7.6 0 012-1.2L10.5 2h4l.4 2.6c.7.3 1.4.7 2 1.2l2.4-1 2 3.4-2 1.6c.1.4.1.8.1 1.2z"/></svg>
+  </button>
+</div>
+
+<!-- first run -->
+<div class="veil" id="setup" hidden>
+  <div class="panel">
+    <div class="kicker">Turntable</div>
+    <h1>Connect your Spotify account</h1>
+    <p>This runs entirely in this browser. Your token is stored here and nowhere else — there is no server in the middle.</p>
+    <ol>
+      <li>Open <code>developer.spotify.com/dashboard</code> and create an app (any name).</li>
+      <li>Add this exact Redirect URI: <code id="redir"></code></li>
+      <li>Tick <strong>Web API</strong>, save, then copy the Client ID below.</li>
+    </ol>
+    <div class="field">
+      <input id="cid" placeholder="Client ID" autocomplete="off" spellcheck="false" inputmode="latin">
+      <button class="btn" id="go">Connect</button>
+    </div>
+    <div class="err" id="err"></div>
+    <p class="note">Reading what's playing and using the transport controls both need Spotify Premium — that's Spotify's rule, not this page's.</p>
+  </div>
+</div>
+
+<!-- settings / pairing -->
+<div class="veil" id="opts" hidden>
+  <div class="panel">
+    <div class="kicker">Settings</div>
+    <h1>This device</h1>
+    <p>Signed in. Redirect URI in use: <code id="redir2"></code></p>
+    <div class="field">
+      <button class="btn ghost" id="pair">Copy a link to pair another device</button>
+      <button class="btn ghost" id="out">Sign out</button>
+    </div>
+    <p class="note" id="pairNote" hidden></p>
+    <div class="field" style="margin-top:1.2rem">
+      <button class="btn" id="close">Back to the record</button>
+    </div>
+    <p class="note">A pairing link carries your refresh token in the address. Send it over your own network only, and open it once — the page strips it from the URL immediately.</p>
+  </div>
+</div>
+
+<div class="veil" id="rotate">
+  <div class="panel">
+    <div class="phone-icon"></div>
+    <div class="kicker">Turn sideways</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+const AUTH_URL  = 'https://accounts.spotify.com/authorize';
+const TOKEN_URL = 'https://accounts.spotify.com/api/token';
+const API       = 'https://api.spotify.com/v1';
+const SCOPES    = 'user-read-playback-state user-modify-playback-state user-read-currently-playing';
+const REDIRECT  = location.origin + location.pathname;
+
+const $ = id => document.getElementById(id);
+const store = {
+  get(k){ try { return localStorage.getItem('vinyl.' + k); } catch { return null; } },
+  set(k,v){ try { localStorage.setItem('vinyl.' + k, v); } catch {} },
+  del(k){ try { localStorage.removeItem('vinyl.' + k); } catch {} }
+};
+
+let clientId = store.get('cid') || '';
+let token    = store.get('tok') || '';
+let refresh  = store.get('ref') || '';
+let expires  = Number(store.get('exp') || 0);
+
+/* ---------------- PKCE ---------------- */
+const rand = n => {
+  const a = new Uint8Array(n); crypto.getRandomValues(a);
+  return Array.from(a, b => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[b % 64]).join('');
+};
+async function challenge(verifier){
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function login(){
+  if (!crypto.subtle){
+    fail('This browser blocks the login crypto over plain http. Sign in on the computer at 127.0.0.1 first, then use a pairing link here.');
+    return;
+  }
+  const verifier = rand(64);
+  store.set('ver', verifier);
+  const p = new URLSearchParams({
+    client_id: clientId, response_type: 'code', redirect_uri: REDIRECT,
+    scope: SCOPES, code_challenge_method: 'S256',
+    code_challenge: await challenge(verifier)
+  });
+  location.href = AUTH_URL + '?' + p;
+}
+async function exchange(code){
+  const verifier = store.get('ver') || '';
+  const r = await fetch(TOKEN_URL, {
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({
+      grant_type:'authorization_code', code, redirect_uri:REDIRECT,
+      client_id:clientId, code_verifier:verifier
+    })
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error_description || j.error || 'Token exchange failed');
+  keep(j);
+  store.del('ver');
+}
+async function renew(){
+  if (!refresh) return false;
+  const r = await fetch(TOKEN_URL, {
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({ grant_type:'refresh_token', refresh_token:refresh, client_id:clientId })
+  });
+  if (!r.ok){ signOut(); return false; }
+  keep(await r.json());
+  return true;
+}
+function keep(j){
+  token   = j.access_token;
+  expires = Date.now() + (j.expires_in - 60) * 1000;
+  if (j.refresh_token) refresh = j.refresh_token;
+  store.set('tok', token); store.set('exp', String(expires));
+  if (refresh) store.set('ref', refresh);
+}
+function signOut(){
+  ['tok','ref','exp','ver'].forEach(store.del);
+  token = refresh = ''; expires = 0;
+  show('setup');
+}
+
+/* ---------------- Spotify calls ---------------- */
+async function call(path, opts = {}){
+  if (Date.now() > expires && !(await renew())) return null;
+  const r = await fetch(API + path, {
+    ...opts, headers: { Authorization: 'Bearer ' + token, ...(opts.headers || {}) }
+  });
+  if (r.status === 401){ if (await renew()) return call(path, opts); return null; }
+  if (r.status === 403){ toast('Spotify refused that — transport controls need Premium.'); return null; }
+  if (r.status === 429){ return null; }
+  if (r.status === 204 || r.status === 202) return { empty:true };
+  if (!r.ok) return null;
+  const text = await r.text();
+  return text ? JSON.parse(text) : { empty:true };
+}
+
+/* ---------------- rendering ---------------- */
+const el = {
+  record:$('record'), art:$('art'), track:$('track'), artist:$('artist'),
+  vTitle:$('vTitle'), vArtist:$('vArtist'), arcTop:$('arcTopT'), arcBot:$('arcBotT'),
+  bar:$('bar'), clock:$('clock'), icoPlay:$('icoPlay'), icoPause:$('icoPause'),
+  tonearm:$('tonearm')
+};
+let nowId = null, playing = false, progress = 0, duration = 0, lastTick = 0;
+
+const mmss = ms => {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+};
+
+function paint(item, isPlaying){
+  playing = !!isPlaying;
+  el.record.classList.toggle('playing', playing);
+  el.tonearm.classList.toggle('on', playing);
+  el.icoPlay.hidden = playing;
+  el.icoPause.hidden = !playing;
+
+  if (!item){
+    nowId = null; duration = 0; progress = 0;
+    el.track.textContent = 'Nothing playing';
+    el.artist.textContent = 'Start something on Spotify';
+    el.vTitle.textContent = ''; el.vArtist.textContent = '';
+    el.arcTop.textContent = ''; el.art.classList.remove('on');
+    return;
+  }
+  if (item.id === nowId) return;
+  nowId = item.id;
+
+  const artists = (item.artists || []).map(a => a.name).join(', ');
+  const album   = item.album ? item.album.name : '';
+  const year    = item.album && item.album.release_date ? item.album.release_date.slice(0,4) : '';
+
+  el.track.textContent  = item.name;
+  el.artist.textContent = artists;
+  el.vTitle.textContent = item.name;
+  el.vArtist.textContent = artists;
+  el.arcTop.textContent = [album, year].filter(Boolean).join(' · ').toLowerCase();
+  document.title = item.name + ' — ' + artists;
+
+  const img = item.album && item.album.images && item.album.images[0];
+  if (img){
+    el.art.classList.remove('on');
+    const pre = new Image();
+    pre.onload = () => { el.art.src = img.url; el.art.alt = album; el.art.classList.add('on'); };
+    pre.src = img.url;
+  } else {
+    el.art.classList.remove('on');
+  }
+}
+
+function tick(){
+  if (playing && duration){
+    const now = Date.now();
+    progress = Math.min(duration, progress + (now - lastTick));
+    lastTick = now;
+  } else {
+    lastTick = Date.now();
+  }
+  el.bar.style.width = duration ? (progress / duration * 100) + '%' : '0%';
+  el.clock.textContent = mmss(progress) + ' / ' + mmss(duration);
+  requestAnimationFrame(tick);
+}
+
+async function poll(){
+  const d = await call('/me/player');
+  if (!d || d.empty){ paint(null, false); return; }
+  paint(d.item, d.is_playing);
+  if (d.item) duration = d.item.duration_ms;
+  progress = d.progress_ms || 0;
+  lastTick = Date.now();
+}
+
+/* ---------------- transport ---------------- */
+$('toggle').onclick = async () => {
+  const wasPlaying = playing;
+  // Move the record straight away; the next poll confirms it.
+  playing = !wasPlaying;
+  el.record.classList.toggle('playing', playing);
+  el.tonearm.classList.toggle('on', playing);
+  el.icoPlay.hidden = playing;
+  el.icoPause.hidden = !playing;
+  await call(wasPlaying ? '/me/player/pause' : '/me/player/play', { method:'PUT' });
+  setTimeout(poll, 350);
+};
+$('next').onclick = async () => { await call('/me/player/next', { method:'POST' }); setTimeout(poll, 450); };
+$('prev').onclick = async () => { await call('/me/player/previous', { method:'POST' }); setTimeout(poll, 450); };
+
+/* ---------------- shell ---------------- */
+function show(which){
+  ['app','setup','opts'].forEach(id => { $(id).hidden = (id !== which); });
+}
+let toastTimer;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 3800);
+}
+function fail(msg){ $('err').textContent = msg; }
+
+$('redir').textContent = REDIRECT;
+$('redir2').textContent = REDIRECT;
+$('cid').value = clientId;
+$('go').onclick = () => {
+  const v = $('cid').value.trim();
+  if (!/^[0-9a-f]{32}$/i.test(v)) return fail('That does not look like a Client ID — it is 32 letters and digits.');
+  clientId = v; store.set('cid', v); fail(''); login();
+};
+$('cid').addEventListener('keydown', e => { if (e.key === 'Enter') $('go').click(); });
+
+$('gear').onclick = () => show('opts');
+$('close').onclick = () => show('app');
+$('out').onclick = signOut;
+$('pair').onclick = async () => {
+  const payload = btoa(JSON.stringify({ c: clientId, r: refresh }));
+  const link = REDIRECT + '#pair=' + encodeURIComponent(payload);
+  try { await navigator.clipboard.writeText(link); toast('Pairing link copied. Swap in this machine’s LAN address.'); }
+  catch { /* clipboard refused — show it instead */ }
+  const n = $('pairNote');
+  n.hidden = false;
+  n.innerHTML = 'Open this on the other device, replacing <code>127.0.0.1</code> with this computer’s LAN address:<br><code>' + link + '</code>';
+};
+
+async function boot(){
+  // pairing link from another device
+  const hash = new URLSearchParams(location.hash.slice(1));
+  if (hash.has('pair')){
+    try {
+      const p = JSON.parse(atob(decodeURIComponent(hash.get('pair'))));
+      clientId = p.c; refresh = p.r;
+      store.set('cid', clientId); store.set('ref', refresh);
+      expires = 0;
+    } catch {}
+    history.replaceState(null, '', REDIRECT);
+  }
+
+  // return leg of the OAuth redirect
+  const q = new URLSearchParams(location.search);
+  if (q.has('error')){
+    history.replaceState(null, '', REDIRECT);
+    show('setup'); fail('Spotify said: ' + q.get('error'));
+    return;
+  }
+  if (q.has('code')){
+    try {
+      await exchange(q.get('code'));
+      history.replaceState(null, '', REDIRECT);
+    } catch (e) {
+      history.replaceState(null, '', REDIRECT);
+      show('setup'); fail(e.message + ' — check the Redirect URI matches exactly.');
+      return;
+    }
+  }
+
+  if (!clientId || (!token && !refresh)){ show('setup'); return; }
+  if (Date.now() > expires && !(await renew())){ show('setup'); return; }
+
+  show('app');
+  requestAnimationFrame(tick);
+  poll();
+  setInterval(poll, 3000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+
+  // keep the screen awake while the record is on display
+  if ('wakeLock' in navigator){
+    const grab = () => navigator.wakeLock.request('screen').catch(() => {});
+    grab();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) grab(); });
+  }
+}
+boot();
+</script>
+</body>
+</html>
