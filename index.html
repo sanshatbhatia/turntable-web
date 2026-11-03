@@ -156,11 +156,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
    while the outer ring of artwork still shows as it turns */
 .label .scrim{
   position:absolute;inset:0;border-radius:50%;
+  /* just enough vignette to seat the spindle and the label edge */
   background:radial-gradient(circle at 50% 50%,
-    rgba(0,0,0,.72) 0%, rgba(0,0,0,.42) 70%, rgba(0,0,0,.20) 100%);
+    rgba(0,0,0,.34) 0%, rgba(0,0,0,.10) 55%, rgba(0,0,0,.28) 100%);
   opacity:0;transition:opacity .7s ease;
 }
 .label.has-art .scrim{opacity:1}
+/* With a cover on the label, the artwork gets it to itself — the title and
+   artist are already set below the deck, and stacking type over a sleeve
+   that has its own typography reads as a mess. */
+.label.has-art .vtext,
+.label.has-art .arcs{display:none}
 .label .arcs{position:absolute;inset:0;width:100%;height:100%}
 .label .arcs text{
   font-family:var(--font-narrow);
