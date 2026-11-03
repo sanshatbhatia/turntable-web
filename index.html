@@ -141,7 +141,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 @media (prefers-reduced-motion:reduce){
   .pool{animation:none}
 }
-.stage,.bar,.progress{position:relative;z-index:1}
+.stage,.bar,.progress,.queue{position:relative;z-index:1}
 .stage{
   flex:1;min-height:0;position:relative;
   display:flex;align-items:center;justify-content:center;
@@ -313,6 +313,51 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   background:var(--hardware);
   border-radius:3px;
   box-shadow:0 2px 8px -4px var(--shadow);
+}
+
+/* ---------- queue ---------- */
+.queue{
+  flex:0 0 auto;
+  display:flex;align-items:center;gap:clamp(10px,2.2vh,18px);
+  padding-top:clamp(6px,1.4vh,12px);
+  min-height:0;overflow:hidden;
+}
+.queue:empty{display:none}
+.qitem{
+  position:relative;flex:0 0 auto;
+  height:clamp(34px,8.4vh,60px);
+  width:calc(clamp(34px,8.4vh,60px) * 1.62);
+  opacity:0;animation:qin .5s ease forwards;
+}
+@keyframes qin{to{opacity:1}}
+.qsleeve{
+  position:absolute;left:0;top:0;bottom:0;
+  aspect-ratio:1/1;
+  background:var(--sleeve-blank);
+  box-shadow:0 5px 12px -6px var(--shadow);
+  overflow:hidden;z-index:2;
+}
+.qsleeve img{width:100%;height:100%;object-fit:cover;display:block}
+.qrecord{
+  position:absolute;top:50%;left:52%;
+  height:88%;aspect-ratio:1/1;
+  transform:translateY(-50%);
+  border-radius:50%;z-index:1;
+  background:
+    repeating-radial-gradient(circle at 50% 50%,
+      var(--groove-hi) 0 1px, var(--groove-lo) 1px 2px, rgba(0,0,0,0) 2px 2.6px),
+    radial-gradient(circle at 50% 50%, var(--vinyl-mid) 0 99%, rgba(0,0,0,0) 99%);
+}
+.qrecord::after{   /* the label, and its spindle */
+  content:"";position:absolute;left:50%;top:50%;
+  width:34%;height:34%;transform:translate(-50%,-50%);
+  border-radius:50%;background:var(--label-base);
+  box-shadow:inset 0 0 0 1.5px var(--paper);
+}
+.qnum{
+  position:absolute;left:0;bottom:-1.05em;
+  font-family:var(--font-narrow);font-size:8px;letter-spacing:.2em;
+  color:var(--ink-soft);
 }
 
 /* ---------- volume ---------- */
@@ -525,6 +570,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     </div>
   </div>
 
+  <div class="queue" id="queue"></div>
+
   <div class="bar">
     <div class="meta">
       <div class="track" id="track">Nothing playing</div>
@@ -713,7 +760,7 @@ const el = {
   bar:$('bar'), clock:$('clock'), icoPlay:$('icoPlay'), icoPause:$('icoPause'),
   arm:$('arm'), weight:$('weight'), label:$('label'), labelArt:$('labelArt'),
   clockHM:$('clockHM'), clockSS:$('clockSS'), clockDate:$('clockDate'),
-  volFill:$('volFill'), volPct:$('volPct'),
+  volFill:$('volFill'), volPct:$('volPct'), queue:$('queue'),
   ambientA:$('ambientA'), ambientB:$('ambientB')
 };
 
@@ -764,6 +811,7 @@ function paint(item, isPlaying){
   el.vTitle.textContent = item.name;
   el.vArtist.textContent = artists;
   el.arcTop.textContent = [album, year].filter(Boolean).join(' · ').toLowerCase();
+  setTimeout(pollQueue, 600);
   document.title = item.name + ' — ' + artists;
 
   const sleeve = el.art.parentElement;
@@ -916,6 +964,41 @@ function applyAmbient(colours){
   next.classList.add('on');
   if (ambientFront) ambientFront.classList.remove('on');
   ambientFront = next;
+}
+
+/* ---------------- queue ----------------
+   Spotify's own queue endpoint, which returns what is coming next in order.
+   Polled far less often than playback state: it changes rarely and the
+   endpoint is rate limited. */
+const QUEUE_LENGTH = 6;
+let queueSignature = '';
+
+function drawQueue(items){
+  const signature = items.map(t => t.id).join(',');
+  if (signature === queueSignature) return;     // leave the DOM alone if nothing moved
+  queueSignature = signature;
+
+  el.queue.innerHTML = '';
+  items.forEach((track, i) => {
+    const art = track.album && track.album.images && track.album.images.slice(-1)[0];
+    const item = document.createElement('div');
+    item.className = 'qitem';
+    item.style.animationDelay = (i * 60) + 'ms';
+    item.title = `${track.name} — ${(track.artists || []).map(a => a.name).join(', ')}`;
+    item.innerHTML =
+      '<div class="qrecord"></div>' +
+      '<div class="qsleeve">' +
+        (art ? `<img alt="" src="${art.url}">` : '') +
+      '</div>' +
+      `<span class="qnum">${String(i + 1).padStart(2, '0')}</span>`;
+    el.queue.appendChild(item);
+  });
+}
+
+async function pollQueue(){
+  const d = await call('/me/player/queue');
+  if (!d || d.empty || !Array.isArray(d.queue)){ drawQueue([]); return; }
+  drawQueue(d.queue.filter(t => t && t.id).slice(0, QUEUE_LENGTH));
 }
 
 /* ---------------- volume ---------------- */
@@ -1071,6 +1154,8 @@ async function boot(){
   requestAnimationFrame(tick);
   poll();
   setInterval(poll, 3000);
+  pollQueue();
+  setInterval(pollQueue, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 
   // keep the screen awake while the record is on display
