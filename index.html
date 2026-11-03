@@ -349,9 +349,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   position:relative;flex:0 0 auto;
   height:clamp(24px,5.6vh,38px);
   width:calc(clamp(24px,5.6vh,38px) * 1.46);
-  opacity:0;animation:qin .5s ease forwards;
+  /* Visible at rest: the entry animation is a flourish, never the thing that
+     makes an item appear. A frozen or disabled animation must not hide it. */
+  animation:qin .5s ease both;
 }
-@keyframes qin{to{opacity:1}}
+@keyframes qin{
+  from{opacity:0;transform:translateX(6px)}
+  to  {opacity:1;transform:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .qitem{animation:none}
+}
 .qsleeve{
   position:absolute;left:0;top:0;bottom:0;
   aspect-ratio:1/1;
