@@ -145,7 +145,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .stage{
   flex:1;min-height:0;position:relative;
   display:flex;align-items:center;justify-content:center;
-  gap:0;
+  /* Inset by the right-hand rail's width on BOTH sides, so the deck is centred
+     on the screen rather than centred in whatever is left beside the rail. */
+  padding-inline:clamp(56px,10vw,116px);
 }
 .deck{
   position:relative;
@@ -418,10 +420,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ---------- transport ---------- */
 .wallclock{
-  position:absolute;top:max(6px,env(safe-area-inset-top,0px));
-  left:max(2px,env(safe-area-inset-left,0px));
+  /* In the flow, not floating over it: as an overlay the deck was laid out as
+     though the clock were not there and ran underneath it. */
+  flex:0 0 auto;align-self:flex-start;
   color:var(--ink);
-  z-index:12;pointer-events:none;
+  pointer-events:none;
   font-variant-numeric:tabular-nums;
   line-height:1;
 }
