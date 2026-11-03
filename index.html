@@ -338,16 +338,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ---------- queue ---------- */
 .queue{
-  flex:0 0 auto;
-  display:flex;align-items:center;gap:clamp(10px,2.2vh,18px);
-  padding-top:clamp(6px,1.4vh,12px);
-  min-height:0;overflow:hidden;
+  position:absolute;z-index:12;
+  right:calc(max(0px,env(safe-area-inset-right,0px)) + 44px);
+  top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;align-items:flex-end;
+  gap:clamp(6px,1.6vh,11px);
 }
 .queue:empty{display:none}
 .qitem{
   position:relative;flex:0 0 auto;
-  height:clamp(34px,8.4vh,60px);
-  width:calc(clamp(34px,8.4vh,60px) * 1.62);
+  height:clamp(24px,5.6vh,38px);
+  width:calc(clamp(24px,5.6vh,38px) * 1.46);
   opacity:0;animation:qin .5s ease forwards;
 }
 @keyframes qin{to{opacity:1}}
@@ -360,8 +361,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 }
 .qsleeve img{width:100%;height:100%;object-fit:cover;display:block}
 .qrecord{
-  position:absolute;top:50%;left:52%;
-  height:88%;aspect-ratio:1/1;
+  position:absolute;top:50%;left:46%;
+  height:86%;aspect-ratio:1/1;
   transform:translateY(-50%);
   border-radius:50%;z-index:1;
   background:
@@ -375,11 +376,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   border-radius:50%;background:var(--label-base);
   box-shadow:inset 0 0 0 1.5px var(--paper);
 }
-.qnum{
-  position:absolute;left:0;bottom:-1.05em;
-  font-family:var(--font-narrow);font-size:8px;letter-spacing:.2em;
-  color:var(--ink-soft);
-}
+.qnum{display:none}
 
 /* ---------- volume ---------- */
 .volume{
@@ -536,6 +533,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 }
 .toast.on{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible}
 
+.starsBtn{
+  position:fixed;top:max(8px,env(safe-area-inset-top,0px));
+  right:calc(max(8px,env(safe-area-inset-right,0px)) + 32px);
+  width:30px;height:30px;display:grid;place-items:center;border-radius:50%;
+  opacity:.5;transition:opacity .2s ease;z-index:15;
+}
+.starsBtn.off{opacity:.2}
+.starsBtn:hover{opacity:.85}
+.starsBtn svg{width:15px;height:15px;fill:var(--ink)}
+.starsBtn.off svg{fill:none;stroke:var(--ink);stroke-width:1.8}
 .gear{
   position:fixed;top:max(8px,env(safe-area-inset-top,0px));right:max(8px,env(safe-area-inset-right,0px));
   width:34px;height:34px;display:grid;place-items:center;border-radius:50%;
@@ -625,6 +632,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
       <svg viewBox="0 0 24 24"><path d="M3 9h4l5-5v16l-5-5H3zM15.5 9.8l1.4-1.4 2.1 2.1 2.1-2.1 1.4 1.4-2.1 2.1 2.1 2.1-1.4 1.4-2.1-2.1-2.1 2.1-1.4-1.4 2.1-2.1z"/></svg>
     </button>
   </div>
+
+  <button class="starsBtn" id="starsBtn" aria-label="Toggle stars">
+    <svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.5 6.1 20.6l1.2-6.5L2.5 9.5l6.6-.9z"/></svg>
+  </button>
 
   <button class="gear" id="gear" aria-label="Settings">
     <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9.4 4a7.5 7.5 0 01-.1 1.2l2 1.6-2 3.4-2.4-1a7.6 7.6 0 01-2 1.2l-.4 2.6h-4l-.4-2.6a7.6 7.6 0 01-2-1.2l-2.4 1-2-3.4 2-1.6a7.5 7.5 0 010-2.4l-2-1.6 2-3.4 2.4 1a7.6 7.6 0 012-1.2L10.5 2h4l.4 2.6c.7.3 1.4.7 2 1.2l2.4-1 2 3.4-2 1.6c.1.4.1.8.1 1.2z"/></svg>
@@ -991,8 +1002,22 @@ function applyAmbient(colours){
 /* ---------------- stars ----------------
    Built once. Each star gets its own rate and delay, so none of them blink
    together, which is what separates a sky from a string of fairy lights. */
+let starsOn = true;
+try { starsOn = localStorage.getItem('vinyl.stars') !== '0'; } catch {}
+
+function applyStars(){
+  $('stars').style.visibility = starsOn ? 'visible' : 'hidden';
+  $('starsBtn').classList.toggle('off', !starsOn);
+}
+$('starsBtn').onclick = () => {
+  starsOn = !starsOn;
+  try { localStorage.setItem('vinyl.stars', starsOn ? '1' : '0'); } catch {}
+  applyStars();
+};
+
 function buildStars(n = 90){
   const sky = $('stars');
+  applyStars();
   if (sky.childElementCount) return;
   const frag = document.createDocumentFragment();
   for (let i = 0; i < n; i++){
