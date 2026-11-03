@@ -73,6 +73,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ---------- stage ---------- */
 #app{height:100%;display:flex;flex-direction:column;position:relative}
+/* Ambient lighting: two large soft pools of colour drawn from the cover.
+   Gradients cannot be transitioned, so there are two layers and the new one
+   is cross-faded in over the old. */
+.ambient{
+  position:fixed;inset:-12%;
+  z-index:0;pointer-events:none;
+  opacity:0;transition:opacity 1.4s ease;
+  will-change:opacity;
+}
+.ambient.on{opacity:1}
+#app > *:not(.ambient){position:relative;z-index:1}
 .stage{
   flex:1;min-height:0;position:relative;
   display:flex;align-items:center;justify-content:center;
@@ -371,6 +382,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 <body>
 
 <div id="app" hidden>
+  <div class="ambient" id="ambientA"></div>
+  <div class="ambient" id="ambientB"></div>
   <div class="wallclock" id="wallClock">00:00:00</div>
   <div class="stage">
     <div class="deck">
@@ -579,7 +592,7 @@ const el = {
   vTitle:$('vTitle'), vArtist:$('vArtist'), arcTop:$('arcTopT'), arcBot:$('arcBotT'),
   bar:$('bar'), clock:$('clock'), icoPlay:$('icoPlay'), icoPause:$('icoPause'),
   arm:$('arm'), weight:$('weight'), label:$('label'), labelArt:$('labelArt'),
-  wallClock:$('wallClock')
+  wallClock:$('wallClock'), ambientA:$('ambientA'), ambientB:$('ambientB')
 };
 
 /* Tonearm angles, in the deck's own units: the pivot sits outside the disc's
@@ -641,6 +654,7 @@ function paint(item, isPlaying){
       // the same cover, pressed onto the centre label
       el.labelArt.src = img.url;
       el.labelArt.classList.add('on'); el.label.classList.add('has-art');
+      coverColours(img.url).then(applyAmbient);
     };
     pre.src = img.url;
   } else {
@@ -648,6 +662,7 @@ function paint(item, isPlaying){
     sleeve.classList.remove('has-art');
     el.labelArt.classList.remove('on');
     el.label.classList.remove('has-art');
+    applyAmbient([]);
   }
 }
 
@@ -675,6 +690,106 @@ function startWallClock(){
   paint2();
 }
 
+/* ---------------- ambient light ----------------
+   Two pools of colour taken from the cover, washed across the room behind the
+   deck. Near-black, near-white and flat greys are skipped: they make dull
+   light and would just grey the page down. */
+const sampler = document.createElement('canvas');
+function coverColours(url){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onerror = () => resolve([]);
+    img.onload = () => {
+      try {
+        const n = 24;
+        sampler.width = sampler.height = n;
+        const ctx = sampler.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, n, n);
+        const d = ctx.getImageData(0, 0, n, n).data;
+        const buckets = new Map();
+        for (let i = 0; i < d.length; i += 4){
+          const r = d[i], g = d[i+1], b = d[i+2];
+          const hi = Math.max(r,g,b), lo = Math.min(r,g,b);
+          const sat = hi === 0 ? 0 : (hi - lo) / hi;
+          if (hi < 30 || lo > 230 || sat < 0.12) continue;
+          const key = (r >> 4) + ',' + (g >> 4) + ',' + (b >> 4);
+          const e = buckets.get(key) || { n:0, r:0, g:0, b:0, s:0 };
+          e.n++; e.r += r; e.g += g; e.b += b; e.s += sat;
+          buckets.set(key, e);
+        }
+        const ranked = [...buckets.values()]
+          .map(e => ({
+            r: Math.round(e.r / e.n), g: Math.round(e.g / e.n), b: Math.round(e.b / e.n),
+            score: e.n * (0.5 + e.s / e.n)      // favour colour over sheer area
+          }))
+          .sort((x, y) => y.score - x.score);
+        resolve(ranked.slice(0, 2));
+      } catch {
+        resolve([]);   // cross-origin cover: no light rather than a broken page
+      }
+    };
+    img.src = url;
+  });
+}
+
+let ambientFront = null;
+function applyAmbient(colours){
+  const a = colours[0];
+  if (!a){
+    el.ambientA.classList.remove('on');
+    el.ambientB.classList.remove('on');
+    ambientFront = null;
+    return;
+  }
+  const b = colours[1] || a;
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const alpha = dark ? 0.55 : 0.34;
+  const next = ambientFront === el.ambientA ? el.ambientB : el.ambientA;
+  next.style.background =
+    `radial-gradient(58% 70% at 24% 30%, rgba(${a.r},${a.g},${a.b},${alpha}), rgba(0,0,0,0) 70%),` +
+    `radial-gradient(54% 64% at 79% 71%, rgba(${b.r},${b.g},${b.b},${alpha * 0.85}), rgba(0,0,0,0) 72%)`;
+  next.classList.add('on');
+  if (ambientFront) ambientFront.classList.remove('on');
+  ambientFront = next;
+}
+
+/* ---------------- swipe ----------------
+   Right for the next track, left for the previous one. A short nudge of the
+   deck acknowledges the gesture before the new track arrives. */
+function nudge(dir){
+  const deck = document.querySelector('.deck');
+  if (!deck) return;
+  deck.style.transition = 'transform .18s ease-out';
+  deck.style.transform = `translateX(${dir * 3}%)`;
+  setTimeout(() => {
+    deck.style.transform = 'translateX(0)';
+    setTimeout(() => { deck.style.transition = ''; }, 220);
+  }, 180);
+}
+
+(function swipes(){
+  const surface = $('app');
+  let x0 = null, y0 = 0, t0 = 0;
+  surface.addEventListener('pointerdown', e => {
+    x0 = e.clientX; y0 = e.clientY; t0 = Date.now();
+  });
+  const finish = e => {
+    if (x0 === null) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0, dt = Date.now() - t0;
+    x0 = null;
+    if (dt > 800) return;                               // a slow drag is not a swipe
+    if (Math.abs(dx) < 60) return;                      // too short to mean it
+    if (Math.abs(dx) < Math.abs(dy) * 1.6) return;      // mostly vertical
+    if (dx > 0){ nudge(1); next(); } else { nudge(-1); previous(); }
+  };
+  surface.addEventListener('pointerup', finish);
+  surface.addEventListener('pointercancel', () => { x0 = null; });
+})();
+
+async function next(){ await call('/me/player/next', { method:'POST' }); setTimeout(poll, 450); }
+async function previous(){ await call('/me/player/previous', { method:'POST' }); setTimeout(poll, 450); }
+
 async function poll(){
   const d = await call('/me/player');
   if (!d || d.empty){ paint(null, false); return; }
@@ -697,8 +812,8 @@ $('toggle').onclick = async () => {
   await call(wasPlaying ? '/me/player/pause' : '/me/player/play', { method:'PUT' });
   setTimeout(poll, 350);
 };
-$('next').onclick = async () => { await call('/me/player/next', { method:'POST' }); setTimeout(poll, 450); };
-$('prev').onclick = async () => { await call('/me/player/previous', { method:'POST' }); setTimeout(poll, 450); };
+$('next').onclick = () => next();
+$('prev').onclick = () => previous();
 
 /* ---------------- shell ---------------- */
 function show(which){
