@@ -351,13 +351,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   position:relative;flex:0 0 auto;
   height:clamp(24px,5.6vh,38px);
   width:calc(clamp(24px,5.6vh,38px) * 1.46);
-  /* Visible at rest: the entry animation is a flourish, never the thing that
-     makes an item appear. A frozen or disabled animation must not hide it. */
-  animation:qin .5s ease both;
+  /* The entry animation touches transform only. Animating opacity from 0 —
+     even with fill-mode both — leaves staggered items invisible for as long as
+     their delay lasts, and indefinitely wherever animations are frozen. */
+  animation:qin .45s ease both;
 }
 @keyframes qin{
-  from{opacity:0;transform:translateX(6px)}
-  to  {opacity:1;transform:none}
+  from{transform:translateX(9px)}
+  to  {transform:none}
 }
 @media (prefers-reduced-motion:reduce){
   .qitem{animation:none}
