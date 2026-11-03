@@ -832,7 +832,7 @@ function applyAmbient(colours){
 }
 
 /* ---------------- swipe ----------------
-   Right for the next track, left for the previous one. A short nudge of the
+   Left for the next track, right for the previous one. A short nudge of the
    deck acknowledges the gesture before the new track arrives. */
 function nudge(dir){
   const deck = document.querySelector('.deck');
@@ -858,7 +858,7 @@ function nudge(dir){
     if (dt > 800) return;                               // a slow drag is not a swipe
     if (Math.abs(dx) < 60) return;                      // too short to mean it
     if (Math.abs(dx) < Math.abs(dy) * 1.6) return;      // mostly vertical
-    if (dx > 0){ nudge(1); next(); } else { nudge(-1); previous(); }
+    if (dx < 0){ nudge(-1); next(); } else { nudge(1); previous(); }
   };
   surface.addEventListener('pointerup', finish);
   surface.addEventListener('pointercancel', () => { x0 = null; });
