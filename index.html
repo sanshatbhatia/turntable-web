@@ -92,6 +92,22 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     rgba(0,0,0,1) 0%, rgba(0,0,0,.92) 34%, rgba(0,0,0,.45) 68%, rgba(0,0,0,0) 100%);
 }
 .ambient.on{opacity:1}
+/* The whole band rises and falls while the record turns, on top of the waves'
+   own movement. Tied to playback, not to the beat. */
+.playing-light .ambient.on{
+  animation:breathe 3.2s ease-in-out infinite, shimmer 2.1s ease-in-out infinite;
+}
+@keyframes breathe{
+  0%,100%{opacity:.46}
+  50%    {opacity:1}
+}
+@keyframes shimmer{
+  0%,100%{filter:brightness(.86)}
+  50%    {filter:brightness(1.16)}
+}
+@media (prefers-reduced-motion:reduce){
+  .playing-light .ambient.on{animation:none}
+}
 /* Three crests travelling at different speeds. Where they overlap they build,
    where they separate they fall away — which is what makes it read as waves
    rather than as blobs sliding about. */
