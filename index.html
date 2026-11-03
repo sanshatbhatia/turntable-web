@@ -315,6 +315,36 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   box-shadow:0 2px 8px -4px var(--shadow);
 }
 
+/* ---------- volume ---------- */
+.volume{
+  position:absolute;z-index:12;
+  right:max(0px,env(safe-area-inset-right,0px));
+  top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+}
+.vbtn{
+  width:clamp(28px,5vh,34px);height:clamp(28px,5vh,34px);
+  display:grid;place-items:center;border-radius:50%;
+  color:var(--ink);opacity:.55;
+  transition:opacity .18s ease, background .18s ease, transform .15s ease;
+}
+.vbtn:hover{opacity:1;background:color-mix(in srgb, var(--ink) 8%, transparent)}
+.vbtn:active{transform:scale(.9)}
+.vbtn svg{width:58%;height:58%;fill:currentColor}
+.vlevel{
+  width:2px;height:clamp(40px,11vh,76px);
+  background:var(--hairline);position:relative;overflow:hidden;
+}
+.vlevel i{
+  position:absolute;left:0;right:0;bottom:0;height:50%;
+  background:var(--ink);opacity:.7;
+  transition:height .22s ease;
+}
+.vpct{
+  font-family:var(--font-narrow);font-size:9px;letter-spacing:.16em;
+  color:var(--ink-soft);font-variant-numeric:tabular-nums;
+}
+
 /* ---------- transport ---------- */
 .wallclock{
   position:absolute;top:max(6px,env(safe-area-inset-top,0px));
@@ -516,6 +546,17 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   </div>
   <div class="progress"><i id="bar"></i></div>
 
+  <div class="volume" id="volume">
+    <button class="vbtn" id="volUp" aria-label="Volume up">
+      <svg viewBox="0 0 24 24"><path d="M3 9h4l5-5v16l-5-5H3zM16 8.5a5 5 0 010 7v-7zM19 5.5a9 9 0 010 13v-2.2a6.8 6.8 0 000-8.6z"/></svg>
+    </button>
+    <div class="vlevel"><i id="volFill"></i></div>
+    <div class="vpct" id="volPct">--</div>
+    <button class="vbtn" id="volDown" aria-label="Volume down">
+      <svg viewBox="0 0 24 24"><path d="M3 9h4l5-5v16l-5-5H3zM15.5 9.8l1.4-1.4 2.1 2.1 2.1-2.1 1.4 1.4-2.1 2.1 2.1 2.1-1.4 1.4-2.1-2.1-2.1 2.1-1.4-1.4 2.1-2.1z"/></svg>
+    </button>
+  </div>
+
   <button class="gear" id="gear" aria-label="Settings">
     <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9.4 4a7.5 7.5 0 01-.1 1.2l2 1.6-2 3.4-2.4-1a7.6 7.6 0 01-2 1.2l-.4 2.6h-4l-.4-2.6a7.6 7.6 0 01-2-1.2l-2.4 1-2-3.4 2-1.6a7.5 7.5 0 010-2.4l-2-1.6 2-3.4 2.4 1a7.6 7.6 0 012-1.2L10.5 2h4l.4 2.6c.7.3 1.4.7 2 1.2l2.4-1 2 3.4-2 1.6c.1.4.1.8.1 1.2z"/></svg>
   </button>
@@ -672,6 +713,7 @@ const el = {
   bar:$('bar'), clock:$('clock'), icoPlay:$('icoPlay'), icoPause:$('icoPause'),
   arm:$('arm'), weight:$('weight'), label:$('label'), labelArt:$('labelArt'),
   clockHM:$('clockHM'), clockSS:$('clockSS'), clockDate:$('clockDate'),
+  volFill:$('volFill'), volPct:$('volPct'),
   ambientA:$('ambientA'), ambientB:$('ambientB')
 };
 
@@ -876,6 +918,23 @@ function applyAmbient(colours){
   ambientFront = next;
 }
 
+/* ---------------- volume ---------------- */
+let volume = null;          // null until the player tells us
+function showVolume(v){
+  if (v === null || v === undefined) return;
+  volume = Math.max(0, Math.min(100, Math.round(v)));
+  el.volFill.style.height = volume + '%';
+  el.volPct.textContent = volume;
+}
+async function nudgeVolume(step){
+  if (volume === null) return;
+  const target = Math.max(0, Math.min(100, volume + step));
+  showVolume(target);                                   // move the bar at once
+  await call(`/me/player/volume?volume_percent=${target}`, { method:'PUT' });
+}
+$('volUp').onclick = () => nudgeVolume(10);
+$('volDown').onclick = () => nudgeVolume(-10);
+
 /* ---------------- swipe ----------------
    Left for the next track, right for the previous one. A short nudge of the
    deck acknowledges the gesture before the new track arrives. */
@@ -920,6 +979,7 @@ async function poll(){
   progress = d.progress_ms || 0;
   lastTick = Date.now();
   setArm(d.is_playing, duration ? progress / duration : 0);
+  if (d.device && typeof d.device.volume_percent === 'number') showVolume(d.device.volume_percent);
 }
 
 /* ---------------- transport ---------------- */
