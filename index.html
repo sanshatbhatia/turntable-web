@@ -49,8 +49,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 }
 .deck{
   position:relative;
-  height:min(84%,78vw);
+  height:100%;
   aspect-ratio:1.95/1;
+  max-width:100%;   /* on a short wide screen, width wins and the height follows */
   display:flex;align-items:center;justify-content:center;
 }
 
@@ -70,6 +71,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   background:linear-gradient(118deg,rgba(255,255,255,.22),rgba(255,255,255,0) 42%);
   pointer-events:none;
 }
+.sleeve.has-art .blank{display:none}
 .sleeve .blank{
   position:absolute;inset:0;display:grid;place-items:center;
   font-family:var(--font-narrow);font-size:.74rem;letter-spacing:.22em;
@@ -539,14 +541,19 @@ function paint(item, isPlaying){
   el.arcTop.textContent = [album, year].filter(Boolean).join(' · ').toLowerCase();
   document.title = item.name + ' — ' + artists;
 
+  const sleeve = el.art.parentElement;
   const img = item.album && item.album.images && item.album.images[0];
   if (img){
     el.art.classList.remove('on');
     const pre = new Image();
-    pre.onload = () => { el.art.src = img.url; el.art.alt = album; el.art.classList.add('on'); };
+    pre.onload = () => {
+      el.art.src = img.url; el.art.alt = album;
+      el.art.classList.add('on'); sleeve.classList.add('has-art');
+    };
     pre.src = img.url;
   } else {
     el.art.classList.remove('on');
+    sleeve.classList.remove('has-art');
   }
 }
 
